@@ -127,45 +127,6 @@ function countryAllowed(cc) {
   return true;
 }
 
-// ───────────────────────── landing page (no token) ────────────────────────
-
-function landingPage(origin) {
-  const html = `<!doctype html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Telegram Bot API proxy</title>
-<style>
-  :root{color-scheme:dark light}
-  body{font:16px/1.6 system-ui,sans-serif;max-width:46rem;margin:3rem auto;padding:0 1.2rem}
-  code,pre{font-family:ui-monospace,monospace;background:#8881;border-radius:.3rem}
-  code{padding:.1rem .3rem}pre{padding:.9rem;overflow:auto}
-  .warn{border-left:3px solid #e44;padding:.2rem 0 .2rem .9rem;background:#e441}
-  h1{font-size:1.4rem}small{opacity:.7}
-</style></head><body>
-<h1>Telegram Bot API proxy</h1>
-<p>This is a reverse proxy for the Telegram Bot API. Point your bot at this
-origin instead of <code>api.telegram.org</code> to reach Telegram from a region
-where it is blocked.</p>
-<p><b>Base URL:</b> <code>${origin}</code></p>
-<div class="warn"><b>Deploy your own.</b> A bot token travels in the request
-path and grants full control of the bot. Whoever runs a proxy can see it. Do
-<b>not</b> route your token through someone else's instance — run this code
-yourself. Source: a single auditable <code>src/worker.js</code>.</div>
-<h2>Hermes Agent</h2>
-<pre># config.yaml
-platforms:
-  telegram:
-    extra:
-      base_url: "${origin}/bot"</pre>
-<h2>Health</h2>
-<p><code>GET ${origin}/healthz</code> — liveness (no token, no upstream call).</p>
-<p><small>No request paths, tokens, IPs, or bodies are logged or stored by this Worker.</small></p>
-</body></html>`;
-  return new Response(html, {
-    status: 200,
-    headers: { "content-type": "text/html; charset=utf-8", ...SECURITY_HEADERS },
-  });
-}
-
 // ───────────────────────── upstream relay ─────────────────────────────────
 
 async function relay(request, url) {
@@ -236,7 +197,7 @@ export default {
     const path = url.pathname;
 
     // Non-relay endpoints first (cheap, no token, no upstream).
-    if (path === "/" || path === "") return landingPage(url.origin);
+    if (path === "/" || path === "") return new Response(null, { status: 404, headers: SECURITY_HEADERS });
     if (path === "/healthz") return json({ ok: true });
     if (path === "/favicon.ico") return new Response(null, { status: 204 });
 
@@ -248,7 +209,7 @@ export default {
     // Must be a well-formed Bot API path. This both routes and rejects junk
     // probes WITHOUT echoing the token anywhere.
     if (!BOT_PATH_RE.test(path)) {
-      return tgError(404, "Not Found: expected /bot<token>/<method>");
+      return tgError(404, "Not Found");
     }
 
     // Country gate.

@@ -9,7 +9,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { __test__ } from "../src/worker.js";
+import worker, { __test__ } from "../src/worker.js";
 
 const { BOT_PATH_RE, redactPath, countryAllowed, rateLimited, buckets, CONFIG } = __test__;
 
@@ -74,4 +74,20 @@ test("rate limiter trips after max in a window", () => {
   for (let i = 0; i < 3; i++) assert.ok(!rateLimited(key, 3), `req ${i + 1} under limit`);
   assert.ok(rateLimited(key, 3), "4th request over limit trips");
   buckets.clear();
+});
+
+
+test("root hides service identity without an HTML landing page", async () => {
+  const resp = await worker.fetch(new Request("https://example.com/"));
+  assert.equal(resp.status, 404);
+  assert.equal(await resp.text(), "");
+  assert.equal(resp.headers.get("content-type"), null);
+});
+
+test("unknown paths do not advertise Bot API route format", async () => {
+  const resp = await worker.fetch(new Request("https://example.com/wp-login.php"));
+  assert.equal(resp.status, 404);
+  const body = await resp.text();
+  assert.ok(!body.includes("/bot"));
+  assert.ok(!body.includes("Telegram"));
 });

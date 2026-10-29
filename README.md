@@ -175,17 +175,32 @@ aiogram / node-telegram-bot-api: set the API base to `https://<you>.workers.dev`
 
 ---
 
+## Discreet root response
+
+Opening the Worker domain directly no longer displays the Telegram proxy landing
+page or setup instructions. `GET /` returns an empty `404 Not Found` response,
+while Bot API relay endpoints continue to work unchanged. This applies after
+redeploying the updated Worker; a GitHub commit alone does not update an
+existing Cloudflare deployment.
+
 ## Endpoints
 
 | Path | Purpose |
 | --- | --- |
-| `/` | Landing page — shows your base URL + the deploy-your-own warning. No token. |
+| `/` | Empty `404 Not Found` response; no landing page or service description. |
 | `/healthz` | Liveness — `{"ok":true}`. No token, no upstream call. |
 | `/bot<TOKEN>/<method>` | Bot API relay. |
 | `/file/bot<TOKEN>/<path>` | File download relay. |
 
-Anything that isn't a well-formed Bot API path gets a clean Telegram-style
-`404` envelope (so junk probes don't even reach the upstream).
+The root path `/` returns an empty `404` response, and unknown paths return a generic
+Telegram-style `404` error without advertising the Bot API route format. This
+reduces casual identification when someone opens the domain in a browser.
+It is **not an anonymity or anti-blocking guarantee**: `/healthz` and valid Bot
+API paths remain reachable, and traffic patterns, TLS/DNS metadata, public
+repository references, or active probing may still identify the service. If
+stealth matters, avoid publishing the private hostname and consider restricting
+access with an independent authentication or network policy compatible with
+all your bot clients.
 
 ---
 
